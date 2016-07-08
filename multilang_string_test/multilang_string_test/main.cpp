@@ -17,14 +17,15 @@ void run(size_t count, func &&fn)
 }
 
 template <class T>
-long AddStringTest(const char * ch)
+long AddStringTest(const char * ch, int &sumLen)
 {
     T str;
     auto begin = high_resolution_clock::now();
-    run(1000000, [&str, ch]()
+    run(1000000, [&str, &sumLen, ch]()
         {
           for(int8_t i = 0; i < StringUtf8Multilang::kMaxSupportedLanguages; ++i)
           {
+            sumLen += strlen(ch);
             str.AddString(i, ch);
           }
         });
@@ -33,7 +34,7 @@ long AddStringTest(const char * ch)
 }
 
 template <class T>
-long ReadString64()
+long ReadString64(int &sumLen)
 {
   {
     T str;
@@ -45,11 +46,12 @@ long ReadString64()
 
     string result;
     auto begin = high_resolution_clock::now();
-    run(1000000, [&str, &result]()
+    run(1000000, [&str, &sumLen, &result]()
         {
           for(int8_t i = 0; i < StringUtf8Multilang::kMaxSupportedLanguages; ++i)
           {
-            str.GetString(i, result);
+            if (str.GetString(i, result))
+              sumLen += result.size();
           }
         });
     auto end = high_resolution_clock::now();
@@ -59,7 +61,7 @@ long ReadString64()
 }
 
 template <class T>
-long ReadString3()
+long ReadString3(int &sumLen)
 {
   {
     T str;
@@ -71,11 +73,12 @@ long ReadString3()
 
     string result;
     auto begin = high_resolution_clock::now();
-    run(1000000, [&str, &result]()
+    run(1000000, [&str, &sumLen, &result]()
         {
           for(int8_t i = 0; i < StringUtf8Multilang::kMaxSupportedLanguages; ++i)
           {
-            str.GetString(i, result);
+            if (str.GetString(i, result))
+              sumLen += result.size();
           }
         });
     auto end = high_resolution_clock::now();
@@ -85,7 +88,7 @@ long ReadString3()
 }
 
 template <class T>
-long ForEach64()
+long ForEach64(int &sumLen)
 {
     T str;
     
@@ -93,16 +96,16 @@ long ForEach64()
     {
       str.AddString(i, "short_str");
     }
-    
+  
     auto begin = high_resolution_clock::now();
-    run(1000000, [&str]()
+    run(1000000, [&str, &sumLen]()
         {
           for(int8_t i = 0; i < StringUtf8Multilang::kMaxSupportedLanguages; ++i)
           {
-            str.ForEach([](int8_t code, const string& str) -> bool
+            str.ForEach([&sumLen](int8_t code, const string& str) -> bool
                         {
                           if(!str.empty())
-                            return str.size();
+                            sumLen += str.size();
                           
                           return true;
                         });
@@ -113,7 +116,7 @@ long ForEach64()
 }
 
 template <class T>
-long ForEach3()
+long ForEach3(int &sumLen)
 {
   T str;
   auto first = StringUtf8Multilang::kMaxSupportedLanguages / 2;
@@ -123,14 +126,14 @@ long ForEach3()
   }
   
   auto begin = high_resolution_clock::now();
-  run(1000000, [&str]()
+  run(1000000, [&str, &sumLen]()
       {
         for(int8_t i = 0; i < StringUtf8Multilang::kMaxSupportedLanguages; ++i)
         {
-          str.ForEach([](int8_t code, const string& str) -> bool
+          str.ForEach([&sumLen](int8_t code, const string& str) -> bool
                       {
                         if(!str.empty())
-                          return str.size();
+                          sumLen += str.size();
                         
                         return true;
                       });
@@ -142,28 +145,31 @@ long ForEach3()
 
 int main(int argc, const char * argv[])
 {
-  cout << "add short string test " << AddStringTest <StringUtf8Multilang> ("short str") << endl;
-  cout << "add short string test OLD " << AddStringTest <OldStringUtf8Multilang> ("short str") << endl;
+  int sumLen = 0;
+  cout << "add short string test " << AddStringTest <StringUtf8Multilang> ("short str", sumLen) << endl;
+  cout << "add short string test OLD " << AddStringTest <OldStringUtf8Multilang> ("short str", sumLen) << endl;
   
   const char * long_str = "long_str                                                     \
                             second line                                                      \
                             thrid line                                                       ";
   
-  cout << "add long string test " << AddStringTest <StringUtf8Multilang> (long_str) << endl;
+  cout << "add long string test " << AddStringTest <StringUtf8Multilang> (long_str, sumLen) << endl;
   cout << "add long string test OLD excluded due to a long execution time (more than 10 minutes)" << endl;
-  //cout << "add long string test OLD" << AddStringTest <OldStringUtf8Multilang> (long_str) << endl;
+  //cout << "add long string test OLD" << AddStringTest <OldStringUtf8Multilang> (long_str, sumLen) << endl;
   
-  cout << "read strings 3 lang test " << ReadString3 <StringUtf8Multilang> () << endl;
-  cout << "read strings 3 lang test OLD " << ReadString3 <OldStringUtf8Multilang> () << endl;
+  cout << "read strings 3 lang test " << ReadString3 <StringUtf8Multilang> (sumLen) << endl;
+  cout << "read strings 3 lang test OLD " << ReadString3 <OldStringUtf8Multilang> (sumLen) << endl;
   
-  cout << "read strings 64 lang test " << ReadString64 <StringUtf8Multilang> () << endl;
-  cout << "read strings 64 lang test OLD " <<  ReadString64 <OldStringUtf8Multilang> () << endl;
+  cout << "read strings 64 lang test " << ReadString64 <StringUtf8Multilang> (sumLen) << endl;
+  cout << "read strings 64 lang test OLD " <<  ReadString64 <OldStringUtf8Multilang> (sumLen) << endl;
 
-  cout << "for_each 3 lang test " << ForEach3 <StringUtf8Multilang> () << endl;
-  cout << "for_each 3 lang test OLD " << ForEach3 <OldStringUtf8Multilang> () << endl;
+  cout << "for_each 3 lang test " << ForEach3 <StringUtf8Multilang> (sumLen) << endl;
+  cout << "for_each 3 lang test OLD " << ForEach3 <OldStringUtf8Multilang> (sumLen) << endl;
   
-  cout << "for_each 64 lang test " << ForEach64 <StringUtf8Multilang> () << endl;
-  cout << "for_each 64 lang test OLD " << ForEach64 <OldStringUtf8Multilang> () << endl;
+  cout << "for_each 64 lang test " << ForEach64 <StringUtf8Multilang> (sumLen) << endl;
+  cout << "for_each 64 lang test OLD " << ForEach64 <OldStringUtf8Multilang> (sumLen) << endl;
+  
+  cout << "sumLen" << sumLen << endl;
   
   return 0;
 }
